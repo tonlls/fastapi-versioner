@@ -5,27 +5,27 @@ This module provides the @deprecated decorator for marking endpoints
 as deprecated with comprehensive metadata and warning management.
 """
 
+from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from ..types.deprecation import DeprecationInfo, WarningLevel
-from ..types.version import Version, VersionLike, normalize_version
 
 
 def deprecated(
-    sunset_date: Optional[datetime] = None,
+    sunset_date: datetime | None = None,
     warning_level: WarningLevel = WarningLevel.WARNING,
-    replacement: Optional[str] = None,
-    migration_guide: Optional[str] = None,
-    reason: Optional[str] = None,
-    custom_headers: Optional[Dict[str, str]] = None,
-    custom_message: Optional[str] = None,
-    **kwargs: Any
+    replacement: str | None = None,
+    migration_guide: str | None = None,
+    reason: str | None = None,
+    custom_headers: dict[str, str] | None = None,
+    custom_message: str | None = None,
+    **kwargs: Any,
 ) -> Callable:
     """
     Decorator to mark an endpoint as deprecated.
-    
+
     Args:
         sunset_date: Date when the endpoint will be removed
         warning_level: Level of deprecation warning
@@ -35,15 +35,15 @@ def deprecated(
         custom_headers: Custom headers to include in responses
         custom_message: Custom deprecation message
         **kwargs: Additional deprecation metadata
-    
+
     Returns:
         Decorated function
-    
+
     Examples:
         >>> @deprecated(reason="Use v2 API instead")
         ... def get_users_old():
         ...     return {"users": []}
-        
+
         >>> @deprecated(
         ...     sunset_date=datetime(2024, 12, 31),
         ...     warning_level=WarningLevel.CRITICAL,
@@ -53,6 +53,7 @@ def deprecated(
         ... def get_users_deprecated():
         ...     return {"users": []}
     """
+
     def decorator(func: Callable) -> Callable:
         # Create deprecation info
         deprecation_info = DeprecationInfo(
@@ -63,47 +64,47 @@ def deprecated(
             reason=reason,
             custom_headers=custom_headers,
             custom_message=custom_message,
-            **kwargs
+            **kwargs,
         )
-        
+
         # Store deprecation metadata on the function
-        func._fastapi_versioner_deprecation = deprecation_info
-        func._fastapi_versioner_deprecated = True
-        
+        func._fastapi_versioner_deprecation = deprecation_info  # type: ignore
+        func._fastapi_versioner_deprecated = True  # type: ignore
+
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
-        
+
         # Copy deprecation metadata to wrapper
-        wrapper._fastapi_versioner_deprecation = deprecation_info
-        wrapper._fastapi_versioner_deprecated = True
-        
+        wrapper._fastapi_versioner_deprecation = deprecation_info  # type: ignore
+        wrapper._fastapi_versioner_deprecated = True  # type: ignore
+
         return wrapper
-    
+
     return decorator
 
 
 def sunset(
     date: datetime,
-    replacement: Optional[str] = None,
-    migration_guide: Optional[str] = None,
-    **kwargs: Any
+    replacement: str | None = None,
+    migration_guide: str | None = None,
+    **kwargs: Any,
 ) -> Callable:
     """
     Decorator to mark an endpoint with a sunset date.
-    
+
     This is a convenience decorator that sets warning level to CRITICAL
     and includes sunset-specific messaging.
-    
+
     Args:
         date: Sunset date when endpoint will be removed
         replacement: Replacement endpoint
         migration_guide: Migration instructions
         **kwargs: Additional metadata
-    
+
     Returns:
         Decorated function
-    
+
     Examples:
         >>> @sunset(
         ...     date=datetime(2024, 6, 1),
@@ -118,32 +119,29 @@ def sunset(
         replacement=replacement,
         migration_guide=migration_guide,
         reason="This endpoint has reached its sunset date",
-        **kwargs
+        **kwargs,
     )
 
 
-def experimental(
-    warning_message: Optional[str] = None,
-    **kwargs: Any
-) -> Callable:
+def experimental(warning_message: str | None = None, **kwargs: Any) -> Callable:
     """
     Decorator to mark an endpoint as experimental.
-    
+
     Experimental endpoints are not deprecated but carry warnings
     about potential changes or instability.
-    
+
     Args:
         warning_message: Custom warning message
         **kwargs: Additional metadata
-    
+
     Returns:
         Decorated function
-    
+
     Examples:
         >>> @experimental()
         ... def get_beta_feature():
         ...     return {"feature": "beta"}
-        
+
         >>> @experimental(warning_message="This API may change without notice")
         ... def get_experimental_data():
         ...     return {"data": "experimental"}
@@ -152,22 +150,22 @@ def experimental(
         "This endpoint is experimental and may change without notice. "
         "Use with caution in production environments."
     )
-    
+
     return deprecated(
         warning_level=WarningLevel.INFO,
         reason="Experimental feature",
         custom_message=warning_message or default_message,
-        **kwargs
+        **kwargs,
     )
 
 
-def get_deprecation_info(func: Callable) -> Optional[DeprecationInfo]:
+def get_deprecation_info(func: Callable) -> DeprecationInfo | None:
     """
     Get deprecation information for a function.
-    
+
     Args:
         func: Function to check
-    
+
     Returns:
         DeprecationInfo if function is deprecated, None otherwise
     """
@@ -177,10 +175,10 @@ def get_deprecation_info(func: Callable) -> Optional[DeprecationInfo]:
 def is_deprecated(func: Callable) -> bool:
     """
     Check if a function is deprecated.
-    
+
     Args:
         func: Function to check
-    
+
     Returns:
         True if function is deprecated
     """
@@ -190,10 +188,10 @@ def is_deprecated(func: Callable) -> bool:
 def is_sunset(func: Callable) -> bool:
     """
     Check if a function has reached its sunset date.
-    
+
     Args:
         func: Function to check
-    
+
     Returns:
         True if function is sunset
     """
@@ -201,13 +199,13 @@ def is_sunset(func: Callable) -> bool:
     return deprecation_info is not None and deprecation_info.is_sunset
 
 
-def get_sunset_date(func: Callable) -> Optional[datetime]:
+def get_sunset_date(func: Callable) -> datetime | None:
     """
     Get the sunset date for a function.
-    
+
     Args:
         func: Function to check
-    
+
     Returns:
         Sunset date if set, None otherwise
     """
@@ -215,13 +213,13 @@ def get_sunset_date(func: Callable) -> Optional[datetime]:
     return deprecation_info.sunset_date if deprecation_info else None
 
 
-def get_replacement(func: Callable) -> Optional[str]:
+def get_replacement(func: Callable) -> str | None:
     """
     Get the replacement endpoint for a deprecated function.
-    
+
     Args:
         func: Function to check
-    
+
     Returns:
         Replacement endpoint if set, None otherwise
     """
@@ -229,13 +227,13 @@ def get_replacement(func: Callable) -> Optional[str]:
     return deprecation_info.replacement if deprecation_info else None
 
 
-def get_migration_guide(func: Callable) -> Optional[str]:
+def get_migration_guide(func: Callable) -> str | None:
     """
     Get the migration guide for a deprecated function.
-    
+
     Args:
         func: Function to check
-    
+
     Returns:
         Migration guide URL/text if set, None otherwise
     """

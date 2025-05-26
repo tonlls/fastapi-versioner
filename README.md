@@ -191,6 +191,78 @@ Run with coverage:
 uv run python -m pytest tests/ --cov=src/fastapi_versioner --cov-report=html
 ```
 
+## 🛠️ Development Setup
+
+### Prerequisites
+
+- Python 3.8+
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+
+### Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/tonlls/fastapi-versioner.git
+cd fastapi-versioner
+```
+
+2. Install dependencies:
+```bash
+uv sync --all-extras --dev
+```
+
+3. Install pre-commit hooks (recommended):
+```bash
+uv run pre-commit install
+```
+
+### Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality. The hooks will automatically run before each commit and:
+
+- Fix code formatting with Ruff
+- Check for linting issues
+- Run type checking with MyPy
+- Perform security scanning with Bandit
+- Run tests to ensure nothing is broken
+
+**What happens when you commit:**
+```bash
+git add .
+git commit -m "Your changes"
+
+# Pre-commit automatically runs:
+# ✓ Ruff formatting and linting
+# ✓ MyPy type checking
+# ✓ Bandit security scan
+# ✓ Test suite
+# If any check fails, the commit is blocked until fixed
+```
+
+**Manual pre-commit run:**
+```bash
+# Run all hooks on all files
+uv run pre-commit run --all-files
+
+# Run specific hook
+uv run pre-commit run ruff --all-files
+```
+
+### Code Quality Tools
+
+- **Ruff**: Fast Python linter and formatter
+- **MyPy**: Static type checking
+- **Bandit**: Security vulnerability scanner
+- **Pytest**: Testing framework with coverage
+
+### Development Workflow
+
+1. Create a feature branch
+2. Make your changes
+3. Run tests: `uv run pytest`
+4. Commit (pre-commit hooks will run automatically)
+5. Push and create a pull request
+
 ## 📚 Examples
 
 Check out the `examples/` directory for complete working examples:

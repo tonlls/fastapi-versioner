@@ -6,48 +6,45 @@ This module exports all available versioning strategies.
 
 # Base strategy
 from .base import (
-    VersioningStrategy,
     CompositeVersioningStrategy,
-)
-
-# URL path strategies
-from .url_path import (
-    URLPathVersioning,
-    URLPathVersioningWithSegments,
-    URLPathVersioningWithQuery,
+    VersioningStrategy,
 )
 
 # Header strategies
 from .header import (
-    HeaderVersioning,
     AcceptHeaderVersioning,
     CustomHeaderVersioning,
+    HeaderVersioning,
     MultiHeaderVersioning,
 )
 
 # Query parameter strategies
 from .query_param import (
-    QueryParameterVersioning,
-    MultiQueryParameterVersioning,
     ConditionalQueryParameterVersioning,
+    MultiQueryParameterVersioning,
+    QueryParameterVersioning,
+)
+
+# URL path strategies
+from .url_path import (
+    URLPathVersioning,
+    URLPathVersioningWithQuery,
+    URLPathVersioningWithSegments,
 )
 
 __all__ = [
     # Base strategy
     "VersioningStrategy",
     "CompositeVersioningStrategy",
-    
     # URL path strategies
     "URLPathVersioning",
     "URLPathVersioningWithSegments",
     "URLPathVersioningWithQuery",
-    
     # Header strategies
     "HeaderVersioning",
     "AcceptHeaderVersioning",
     "CustomHeaderVersioning",
     "MultiHeaderVersioning",
-    
     # Query parameter strategies
     "QueryParameterVersioning",
     "MultiQueryParameterVersioning",
@@ -68,17 +65,17 @@ STRATEGY_REGISTRY = {
 def get_strategy(name: str, **options) -> VersioningStrategy:
     """
     Get a strategy instance by name.
-    
+
     Args:
         name: Strategy name
         **options: Strategy options
-    
+
     Returns:
         Strategy instance
-    
+
     Raises:
         ValueError: If strategy name is not found
-    
+
     Examples:
         >>> strategy = get_strategy("url_path", prefix="v")
         >>> strategy = get_strategy("header", header_name="API-Version")
@@ -86,7 +83,7 @@ def get_strategy(name: str, **options) -> VersioningStrategy:
     if name not in STRATEGY_REGISTRY:
         available = ", ".join(STRATEGY_REGISTRY.keys())
         raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
-    
+
     strategy_class = STRATEGY_REGISTRY[name]
     return strategy_class(**options)
 
@@ -94,11 +91,11 @@ def get_strategy(name: str, **options) -> VersioningStrategy:
 def register_strategy(name: str, strategy_class: type[VersioningStrategy]) -> None:
     """
     Register a custom strategy.
-    
+
     Args:
         name: Strategy name
         strategy_class: Strategy class
-    
+
     Examples:
         >>> class MyStrategy(VersioningStrategy):
         ...     pass
@@ -110,7 +107,7 @@ def register_strategy(name: str, strategy_class: type[VersioningStrategy]) -> No
 def list_strategies() -> list[str]:
     """
     List all available strategy names.
-    
+
     Returns:
         List of strategy names
     """
