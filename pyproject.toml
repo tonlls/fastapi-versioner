@@ -1,0 +1,64 @@
+[project]
+name = "fastapi-versioner"
+version = "0.1.0"
+description = "Production-ready FastAPI versioning library with comprehensive deprecation management and backward compatibility"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.12",
+    "pydantic>=2.11.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "pytest-cov>=6.1.1",
+    "ruff>=0.11.11",
+    "uvicorn>=0.34.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=src/fastapi_versioner --cov-report=term-missing --cov-report=html"
+
+[project.urls]
+Homepage = "https://github.com/tonlls/fastapi-versioner"
+Repository = "https://github.com/tonlls/fastapi-versioner"
+Documentation = "https://github.com/tonlls/fastapi-versioner"
+Issues = "https://github.com/tonlls/fastapi-versioner/issues"
+
+[[project.authors]]
+name = "Ton Llucia"
+email = "tonlls1999@gmail.com"
+
+[project.license]
+text = "MIT"
+
+keywords = ["fastapi", "versioning", "api", "deprecation", "backward-compatibility"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
