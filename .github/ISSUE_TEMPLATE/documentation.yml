@@ -1,0 +1,148 @@
+name: Documentation Improvement
+description: Report issues with documentation or suggest improvements
+title: "[DOCS] "
+labels: ["documentation", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Clear and comprehensive docs are essential for a great developer experience.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation issue is this?
+      options:
+        - Missing documentation
+        - Incorrect/outdated information
+        - Unclear explanation
+        - Typo/grammar error
+        - Code example issue
+        - API reference issue
+        - Tutorial/guide improvement
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Where is the documentation issue located?
+      placeholder: e.g., README.md, docs/user-guide/versioning.md, API reference for VersionedFastAPI
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Content
+      description: What does the current documentation say? (copy/paste the relevant section)
+      render: markdown
+      placeholder: Paste the current documentation content here...
+    validations:
+      required: false
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: What's wrong with the current documentation?
+      placeholder: |
+        Describe the issue:
+        - What's confusing or incorrect?
+        - What information is missing?
+        - How could it be improved?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: Suggested Improvement
+      description: How would you improve this documentation?
+      render: markdown
+      placeholder: |
+        Provide your suggested improvement:
+        - Corrected text
+        - Additional explanations
+        - Better examples
+        - Restructured content
+    validations:
+      required: false
+
+  - type: textarea
+    id: code-example
+    attributes:
+      label: Code Example Issue/Suggestion
+      description: If this relates to code examples, provide the problematic code or suggest improvements
+      render: python
+      placeholder: |
+        # Current problematic code example:
+
+        # Suggested improvement:
+    validations:
+      required: false
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Target Audience
+      description: Who would benefit most from this documentation improvement?
+      options:
+        - Beginners/newcomers to FastAPI Versioner
+        - Intermediate users
+        - Advanced users
+        - Contributors/developers
+        - All users
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this documentation improvement?
+      options:
+        - Low - Minor improvement
+        - Medium - Noticeable improvement
+        - High - Important for user experience
+        - Critical - Blocking user understanding
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any additional context about this documentation issue
+      placeholder: |
+        - How did you discover this issue?
+        - What were you trying to accomplish?
+        - Any related issues or discussions?
+    validations:
+      required: false
+
+  - type: textarea
+    id: related-docs
+    attributes:
+      label: Related Documentation
+      description: Are there other parts of the documentation that should be updated together?
+      placeholder: List any related documentation sections that might need updates...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this hasn't been reported before
+          required: true
+        - label: I have checked the latest version of the documentation
+          required: true
+        - label: I am willing to help improve the documentation if needed
+          required: false

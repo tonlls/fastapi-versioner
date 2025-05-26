@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/tonlls/fastapi-versioner/tree/main/docs
+    about: Check our comprehensive documentation for guides and API reference
+  - name: 💬 Discussions
+    url: https://github.com/tonlls/fastapi-versioner/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🔍 Search Issues
+    url: https://github.com/tonlls/fastapi-versioner/issues?q=is%3Aissue
+    about: Search existing issues before creating a new one
+  - name: 📖 Examples
+    url: https://github.com/tonlls/fastapi-versioner/tree/main/examples
+    about: Browse code examples for common use cases

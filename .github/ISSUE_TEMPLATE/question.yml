@@ -1,0 +1,165 @@
+name: Question / Support
+description: Ask a question or get help with using FastAPI Versioner
+title: "[QUESTION] "
+labels: ["question", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out! We're here to help you with FastAPI Versioner.
+
+        **Before submitting:** Please check our documentation and existing issues to see if your question has already been answered.
+
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: Question Type
+      description: What type of question is this?
+      options:
+        - How to implement a specific feature
+        - Best practices / recommendations
+        - Configuration help
+        - Integration with other libraries
+        - Performance optimization
+        - Troubleshooting (not a bug)
+        - Migration from another solution
+        - General usage question
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: Please describe your question in detail...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / Background
+      description: Provide context about what you're trying to achieve
+      placeholder: |
+        - What are you building?
+        - What's your use case?
+        - What have you tried so far?
+        - What specific outcome are you looking for?
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-code
+    attributes:
+      label: Current Code
+      description: Share your current implementation (if applicable)
+      render: python
+      placeholder: |
+        # Your current FastAPI Versioner setup
+        from fastapi import FastAPI
+        from fastapi_versioner import VersionedFastAPI, version
+
+        app = FastAPI()
+
+        # Your code here...
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: FastAPI Versioner Version
+      description: What version of FastAPI Versioner are you using?
+      placeholder: e.g., 1.0.0
+    validations:
+      required: false
+
+  - type: input
+    id: fastapi-version
+    attributes:
+      label: FastAPI Version
+      description: What version of FastAPI are you using?
+      placeholder: e.g., 0.104.1
+    validations:
+      required: false
+
+  - type: dropdown
+    id: strategy
+    attributes:
+      label: Versioning Strategy
+      description: Which versioning strategy are you using or planning to use?
+      options:
+        - Header-based versioning
+        - Query parameter versioning
+        - URL path versioning
+        - Custom strategy
+        - Not sure / need help choosing
+        - Not applicable
+    validations:
+      required: false
+
+  - type: textarea
+    id: attempted-solutions
+    attributes:
+      label: What Have You Tried?
+      description: What solutions have you already attempted?
+      placeholder: |
+        - Documentation sections you've read
+        - Code approaches you've tried
+        - Error messages you've encountered
+        - Similar questions you've found
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What do you expect to happen or what outcome are you looking for?
+      placeholder: Describe what you want to achieve...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: Additional Information
+      description: Any other relevant information
+      placeholder: |
+        - Links to relevant documentation
+        - Related libraries you're using
+        - Constraints or requirements
+        - Timeline considerations
+    validations:
+      required: false
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is this question for you?
+      options:
+        - Low - Just curious
+        - Medium - Would like to know soon
+        - High - Needed for current project
+        - Critical - Blocking development
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues and discussions
+          required: true
+        - label: I have checked the documentation
+          required: true
+        - label: This is a question, not a bug report or feature request
+          required: true
+        - label: I have provided sufficient context for others to understand my question
+          required: true

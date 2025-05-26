@@ -1,0 +1,168 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for FastAPI Versioner
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible to help us understand your request.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: A clear and concise description of the feature you'd like to see
+      placeholder: Briefly describe the feature...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What use case does it address?
+      placeholder: |
+        Is your feature request related to a problem? Please describe.
+        A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see implemented
+      placeholder: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe any alternative solutions or features you've considered
+      placeholder: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: Which area of FastAPI Versioner does this feature relate to?
+      options:
+        - Core versioning functionality
+        - Versioning strategies
+        - Documentation generation
+        - Deprecation handling
+        - Compatibility features
+        - Testing utilities
+        - Performance improvements
+        - Developer experience
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be helpful
+        - High - Important for my use case
+        - Critical - Blocking my adoption
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Detailed Use Case
+      description: Provide a detailed use case or scenario where this feature would be beneficial
+      placeholder: |
+        Describe a specific scenario where this feature would be useful:
+        - What are you trying to achieve?
+        - How would you use this feature?
+        - What would the workflow look like?
+    validations:
+      required: true
+
+  - type: textarea
+    id: api-design
+    attributes:
+      label: Proposed API Design
+      description: If you have ideas about how the API should look, please share them
+      render: python
+      placeholder: |
+        # Example of how you envision the API:
+        from fastapi_versioner import new_feature
+
+        @app.get("/")
+        @new_feature(param="value")
+        def endpoint():
+            return {"message": "Hello"}
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples from Other Libraries
+      description: Are there similar features in other libraries that could serve as inspiration?
+      placeholder: |
+        If you know of similar features in other libraries (FastAPI, Django REST Framework, etc.),
+        please provide links or examples.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: breaking-change
+    attributes:
+      label: Breaking Change
+      description: Would this feature require breaking changes to the existing API?
+      options:
+        - "No - Fully backward compatible"
+        - "Minor - Small breaking changes acceptable"
+        - "Major - Significant breaking changes required"
+        - "Unknown - Not sure about compatibility impact"
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Ideas
+      description: Do you have any ideas about how this could be implemented?
+      placeholder: |
+        If you have thoughts on implementation approach, technical considerations,
+        or potential challenges, please share them.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request
+      placeholder: Any additional information that might help...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this feature hasn't been requested before
+          required: true
+        - label: I have provided a clear use case for this feature
+          required: true
+        - label: I understand this is a feature request and not a bug report
+          required: true
+        - label: I am willing to help with testing if this feature is implemented
+          required: false
