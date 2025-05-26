@@ -15,6 +15,7 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+        args: [exit_zero_on_fix=False]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.7.1
