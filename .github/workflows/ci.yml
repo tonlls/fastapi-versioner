@@ -65,7 +65,7 @@ jobs:
 
     - name: Run ruff linter
       run: |
-        uv run ruff check src/ tests/ examples/
+        uv run ruff check --fix src/ tests/ examples/
 
     - name: Run ruff formatter
       run: |
