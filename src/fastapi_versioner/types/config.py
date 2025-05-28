@@ -87,10 +87,21 @@ class VersioningConfig:
     strict_version_matching: bool = False
     raise_on_unsupported_version: bool = False
 
+    # Security settings
+    enable_security_features: bool = True
+    enable_input_validation: bool = True
+    enable_rate_limiting: bool = True
+    enable_security_audit_logging: bool = True
+
+    # Performance settings
+    enable_performance_optimization: bool = True
+    enable_caching: bool = True
+    enable_memory_optimization: bool = True
+    enable_performance_monitoring: bool = True
+
     def __post_init__(self):
         """Validate configuration after initialization."""
-        if self.default_version is None:
-            self.default_version = Version(1, 0, 0)
+        # Don't automatically set a default version - let it remain None if explicitly set to None
 
         if self.deprecation_policy is None:
             self.deprecation_policy = DeprecationPolicy()

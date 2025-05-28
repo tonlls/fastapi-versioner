@@ -5,6 +5,7 @@ This module provides the VersionManager class for handling version resolution,
 negotiation, and compatibility management.
 """
 
+from threading import RLock
 from typing import Any, cast
 
 from ..types.compatibility import CompatibilityMatrix, VersionNegotiator
@@ -23,13 +24,14 @@ class VersionManager:
 
     def __init__(self, config: VersioningConfig):
         """
-        Initialize version manager.
+        Initialize version manager with thread-safe operations.
 
         Args:
             config: Versioning configuration
         """
         self.config = config
         self._registered_versions: dict[Version, VersionInfo] = {}
+        self._lock = RLock()  # Thread-safe access to registered versions
 
         # Ensure compatibility matrix is available
         if config.compatibility_matrix is None:
@@ -37,15 +39,15 @@ class VersionManager:
 
         self._negotiator = VersionNegotiator(config.compatibility_matrix)
 
-        # Register default version
-        if config.default_version:
+        # Register default version only if explicitly provided
+        if config.default_version is not None:
             self.register_version(config.default_version)
 
     def register_version(
         self, version: VersionLike, version_info: VersionInfo | None = None
     ) -> None:
         """
-        Register a new API version.
+        Register a new API version with thread-safe access.
 
         Args:
             version: Version to register
@@ -56,11 +58,12 @@ class VersionManager:
         if version_info is None:
             version_info = VersionInfo(version=version_obj)
 
-        self._registered_versions[version_obj] = version_info
+        with self._lock:
+            self._registered_versions[version_obj] = version_info
 
     def is_version_supported(self, version: VersionLike) -> bool:
         """
-        Check if a version is supported.
+        Check if a version is supported with thread-safe access.
 
         Args:
             version: Version to check
@@ -69,16 +72,18 @@ class VersionManager:
             True if version is supported
         """
         version_obj = normalize_version(version)
-        return version_obj in self._registered_versions
+        with self._lock:
+            return version_obj in self._registered_versions
 
     def get_available_versions(self) -> list[Version]:
         """
-        Get all available versions.
+        Get all available versions with thread-safe access.
 
         Returns:
             List of available versions, sorted
         """
-        return sorted(self._registered_versions.keys())
+        with self._lock:
+            return sorted(self._registered_versions.keys())
 
     def get_latest_version(self) -> Version | None:
         """
@@ -87,8 +92,11 @@ class VersionManager:
         Returns:
             Latest version if available, None otherwise
         """
-        versions = self.get_available_versions()
-        return max(versions) if versions else None
+        with self._lock:
+            if not self._registered_versions:
+                return None
+            versions = sorted(self._registered_versions.keys())
+            return max(versions) if versions else None
 
     def negotiate_version(
         self,
@@ -203,18 +211,22 @@ class VersionManager:
         Args:
             version: Version to update
             **updates: Fields to update
+
+        Raises:
+            ValueError: If version is not registered
         """
         version_obj = normalize_version(version)
 
-        if version_obj not in self._registered_versions:
-            raise ValueError(f"Version {version_obj} is not registered")
+        with self._lock:
+            if version_obj not in self._registered_versions:
+                raise ValueError(f"Version {version_obj} is not registered")
 
-        version_info = self._registered_versions[version_obj]
+            version_info = self._registered_versions[version_obj]
 
-        # Update fields
-        for field, value in updates.items():
-            if hasattr(version_info, field):
-                setattr(version_info, field, value)
+            # Update fields
+            for field, value in updates.items():
+                if hasattr(version_info, field):
+                    setattr(version_info, field, value)
 
     def remove_version(self, version: VersionLike) -> bool:
         """
@@ -228,11 +240,12 @@ class VersionManager:
         """
         version_obj = normalize_version(version)
 
-        if version_obj in self._registered_versions:
-            del self._registered_versions[version_obj]
-            return True
+        with self._lock:
+            if version_obj in self._registered_versions:
+                del self._registered_versions[version_obj]
+                return True
 
-        return False
+            return False
 
     def get_version_statistics(self) -> dict[str, Any]:
         """

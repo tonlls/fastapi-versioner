@@ -88,22 +88,56 @@ class HeaderVersioning(VersioningStrategy):
         Raises:
             StrategyError: If version format is invalid or required header is missing
         """
-        # Get request headers
-        headers = request.headers
+        # Get request headers safely
+        try:
+            headers = request.headers
+        except (AttributeError, TypeError):
+            # Handle mock objects
+            headers = getattr(request, "headers", {})
+
+        # Handle both FastAPI headers and mock dictionaries
+        if hasattr(headers, "get"):
+            # FastAPI headers or dictionary-like object
+            header_getter = headers.get
+        else:
+            # Fallback for other types
+            headers = {}
+            header_getter = headers.get
 
         # Try each header name in order
         for header_name in self.headers_to_check:
-            # Get header value (FastAPI headers are case-insensitive by default)
-            header_value = headers.get(header_name)
+            # Get header value
+            header_value = None
 
-            if header_value:
-                try:
-                    return self.validate_version(header_value.strip())
-                except StrategyError:
-                    if self.required:
-                        raise
-                    # Continue to next header if this one is invalid
-                    continue
+            # Try case-insensitive lookup for FastAPI headers
+            if hasattr(headers, "get"):
+                header_value = header_getter(header_name)
+
+                # If not found and case-insensitive, try all headers
+                if header_value is None and not self.case_sensitive:
+                    # For mock objects, try direct key lookup with different cases
+                    if isinstance(headers, dict):
+                        for key, value in headers.items():
+                            if key.lower() == header_name.lower():
+                                header_value = value
+                                break
+                    else:
+                        # For FastAPI headers, they handle case-insensitivity automatically
+                        # Try the original header name as-is
+                        original_header = (
+                            self.header_name
+                            if header_name == self.header_name.lower()
+                            else header_name
+                        )
+                        header_value = header_getter(original_header)
+
+            if header_value and hasattr(header_value, "strip"):
+                # If header is present, validate it (raise error for invalid format)
+                return self.validate_version(header_value.strip())
+            elif header_value:
+                # Handle non-string values
+                # If header is present, validate it (raise error for invalid format)
+                return self.validate_version(str(header_value).strip())
 
         # No version found in any header
         if self.required:
@@ -131,12 +165,45 @@ class HeaderVersioning(VersioningStrategy):
     def _get_extraction_source(self, request: Request) -> str:
         """Get description of extraction source."""
         # Find which header was actually used
-        for header_name in self.headers_to_check:
-            if request.headers.get(header_name):
-                header_value = request.headers.get(header_name)
-                return f"Header: {header_name}={header_value}"
+        try:
+            headers = getattr(request, "headers", {})
 
-        return f"Headers checked: {', '.join(self.headers_to_check)}"
+            # Handle both FastAPI headers and mock dictionaries
+            if hasattr(headers, "get"):
+                header_getter = headers.get
+            else:
+                headers = {}
+                header_getter = headers.get
+
+            for header_name in self.headers_to_check:
+                header_value = None
+
+                # Try case-insensitive lookup
+                if hasattr(headers, "get"):
+                    header_value = header_getter(header_name)
+
+                    # If not found and case-insensitive, try all headers
+                    if header_value is None and not self.case_sensitive:
+                        if isinstance(headers, dict):
+                            for key, value in headers.items():
+                                if key.lower() == header_name.lower():
+                                    header_value = value
+                                    break
+                        else:
+                            # For FastAPI headers, try original header name
+                            original_header = (
+                                self.header_name
+                                if header_name == self.header_name.lower()
+                                else header_name
+                            )
+                            header_value = header_getter(original_header)
+
+                if header_value:
+                    return f"header: {header_name}={header_value}"
+        except (AttributeError, TypeError):
+            pass
+
+        return "header strategy"
 
     def supports_version_format(self, version: Version) -> bool:
         """

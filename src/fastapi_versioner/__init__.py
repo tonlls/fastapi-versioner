@@ -68,7 +68,19 @@ from .types import (
     WarningLevel,
 )
 
-__version__ = "0.1.0"
+# Advanced Features: Analytics & Monitoring
+ANALYTICS_AVAILABLE = False
+
+# Advanced Features: Enhanced OpenAPI Integration
+OPENAPI_ENHANCED_AVAILABLE = False
+
+# Enterprise Features
+ENTERPRISE_AVAILABLE = False
+
+# CLI Tools
+CLI_AVAILABLE = False
+
+__version__ = "1.0.0"
 
 __all__ = [
     # Core
@@ -106,3 +118,5 @@ __all__ = [
     # Version
     "__version__",
 ]
+
+# Advanced features are not available in this build

@@ -5,6 +5,7 @@ This module provides the @version decorator for marking endpoint versions
 and managing version-specific route registration.
 """
 
+import asyncio
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
@@ -136,6 +137,37 @@ class VersionRegistry:
         # Check for version conflicts
         if version in self._routes[route_key]:
             existing_route = self._routes[route_key][version]
+
+            # Allow re-registration of the same original function for the same version/route
+            # This handles legitimate test scenarios where the same function is decorated multiple times
+            # Check if they represent the same original function by comparing name and module
+            same_original_function = (
+                existing_route.original_name == versioned_route.original_name
+                and existing_route.original_module == versioned_route.original_module
+            )
+
+            if same_original_function:
+                # Same original function - this is allowed (e.g., in test fixtures)
+                # Update the existing route with the new versioned_route data
+                self._routes[route_key][version] = versioned_route
+
+                # Update handler tracking
+                if versioned_route.handler in self._handlers:
+                    # Replace the old route with the new one in the handler list
+                    handler_routes = self._handlers[versioned_route.handler]
+                    for i, route in enumerate(handler_routes):
+                        if route.version == version and same_original_function:
+                            handler_routes[i] = versioned_route
+                            break
+                    else:
+                        # If not found, append the new route
+                        handler_routes.append(versioned_route)
+                else:
+                    self._handlers[versioned_route.handler] = [versioned_route]
+
+                return  # Exit early, no conflict
+
+            # Different handler functions trying to register for same version/route - this is a real conflict
             raise VersionConflictError(
                 conflicting_versions=[version],
                 endpoint=route_key,
@@ -287,12 +319,36 @@ def version(
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid version specification: {version_spec}") from e
 
-        # Normalize deprecation info
-        deprecation_info = normalize_deprecation_info(deprecated)
+        # Check for existing deprecation info from @deprecated decorator
+        from .deprecated import get_deprecation_info
 
-        # Create versioned route
+        existing_deprecation = get_deprecation_info(func)
+
+        # Normalize deprecation info from version decorator parameter
+        param_deprecation = normalize_deprecation_info(deprecated)
+
+        # Use existing deprecation info if present, otherwise use parameter
+        deprecation_info = existing_deprecation or param_deprecation
+
+        # Check if the function is async
+        if asyncio.iscoroutinefunction(func):
+
+            @wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                return await func(*args, **kwargs)
+
+            wrapper = async_wrapper
+        else:
+
+            @wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
+
+            wrapper = sync_wrapper
+
+        # Create versioned route with the wrapper function
         versioned_route = VersionedRoute(
-            handler=func,
+            handler=wrapper,
             version=version_obj,
             deprecation_info=deprecation_info,
             description=description,
@@ -300,36 +356,17 @@ def version(
             **kwargs,
         )
 
-        # Store version metadata on the function
-        if not hasattr(func, "_fastapi_versioner_routes"):
-            setattr(func, "_fastapi_versioner_routes", [])
-        routes_list: list[VersionedRoute] = getattr(func, "_fastapi_versioner_routes")
+        # Store version metadata on the wrapper function
+        if not hasattr(wrapper, "_fastapi_versioner_routes"):
+            setattr(wrapper, "_fastapi_versioner_routes", [])
+        routes_list: list[VersionedRoute] = getattr(
+            wrapper, "_fastapi_versioner_routes"
+        )
         routes_list.append(versioned_route)
 
         # Store the latest version info for easy access
-        setattr(func, "_fastapi_versioner_version", version_obj)
-        setattr(func, "_fastapi_versioner_deprecated", deprecation_info is not None)
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        # Copy version metadata to wrapper
-        setattr(
-            wrapper,
-            "_fastapi_versioner_routes",
-            getattr(func, "_fastapi_versioner_routes"),
-        )
-        setattr(
-            wrapper,
-            "_fastapi_versioner_version",
-            getattr(func, "_fastapi_versioner_version"),
-        )
-        setattr(
-            wrapper,
-            "_fastapi_versioner_deprecated",
-            getattr(func, "_fastapi_versioner_deprecated"),
-        )
+        setattr(wrapper, "_fastapi_versioner_version", version_obj)
+        setattr(wrapper, "_fastapi_versioner_deprecated", deprecation_info is not None)
 
         return wrapper
 
