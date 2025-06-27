@@ -1,0 +1,22 @@
+# Core dependencies
+fastapi>=0.115.12
+fastapi-versioner>=1.0.0
+uvicorn>=0.34.2
+pydantic>=2.11.5
+
+# Authentication and security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+
+# Optional enterprise features (uncomment as needed)
+# redis>=4.5.0                    # For distributed rate limiting and caching
+# prometheus-client>=0.17.0       # For metrics collection
+# structlog>=23.0.0              # For structured logging
+# sqlalchemy>=2.0.0              # For database integration
+# alembic>=1.12.0                # For database migrations
+
+# Development and testing
+pytest>=8.3.5
+pytest-asyncio>=0.26.0
+httpx>=0.28.1

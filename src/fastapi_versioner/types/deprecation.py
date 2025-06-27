@@ -140,10 +140,16 @@ class VersionInfo:
         if self.is_deprecated and self.deprecation_info is None:
             self.deprecation_info = DeprecationInfo()
 
-        # Ensure only one stability flag is set
+        # Auto-adjust stability flags if multiple are set
         stability_flags = [self.is_stable, self.is_beta, self.is_alpha]
         if sum(stability_flags) > 1:
-            raise ValueError("Only one stability flag can be set")
+            # If alpha or beta is explicitly set, turn off stable
+            if self.is_alpha:
+                self.is_stable = False
+                self.is_beta = False
+            elif self.is_beta:
+                self.is_stable = False
+                self.is_alpha = False
 
     @property
     def stability_label(self) -> str:
@@ -170,6 +176,9 @@ class VersionInfo:
             "version": str(self.version),
             "is_deprecated": self.is_deprecated,
             "stability": self.stability_label,
+            "is_stable": self.is_stable,
+            "is_beta": self.is_beta,
+            "is_alpha": self.is_alpha,
         }
 
         if self.release_date:

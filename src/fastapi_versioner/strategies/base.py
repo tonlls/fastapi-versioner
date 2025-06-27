@@ -32,6 +32,9 @@ class VersioningStrategy(ABC):
         self.options = options
         self.name = self.__class__.__name__.lower().replace("versioning", "")
 
+        # Store input validator if provided for comprehensive security validation
+        self.input_validator = options.get("input_validator")
+
     @abstractmethod
     def extract_version(self, request: Request) -> Version | None:
         """
@@ -75,14 +78,118 @@ class VersioningStrategy(ABC):
         Raises:
             StrategyError: If version is invalid
         """
+        # Use comprehensive security validation if available
+        if isinstance(version, str):
+            if self.input_validator:
+                try:
+                    # Use comprehensive input validator for security validation
+                    if self.name == "header":
+                        self.input_validator.validate_header_value(version, "version")
+                    elif self.name == "query_param":
+                        self.input_validator.validate_query_parameter(
+                            version, "version"
+                        )
+                    elif self.name == "url_path":
+                        self.input_validator.validate_path_component(version)
+                    else:
+                        # Fallback to version string validation
+                        self.input_validator.validate_version_string(version)
+                except Exception as e:
+                    # Convert SecurityError to StrategyError for consistency
+                    from ..exceptions.base import SecurityError
+
+                    if isinstance(e, SecurityError):
+                        raise StrategyError(
+                            f"Security validation failed: {str(e)}",
+                            error_code="SECURITY_VALIDATION_FAILED",
+                            details={
+                                "version": str(version),
+                                "strategy": self.name,
+                                "security_error": e.error_code,
+                            },
+                        ) from e
+                    else:
+                        raise StrategyError(
+                            f"Input validation failed: {str(e)}",
+                            error_code="INPUT_VALIDATION_FAILED",
+                            details={"version": str(version), "strategy": self.name},
+                        ) from e
+            else:
+                # Fallback to basic security check if no comprehensive validator
+                self._basic_security_check(version)
+
         try:
-            return normalize_version(version)
+            normalized_version = normalize_version(version)
+
+            # Also validate the normalized version object if comprehensive validator is available
+            if self.input_validator and isinstance(version, str):
+                try:
+                    self.input_validator.validate_version_object(normalized_version)
+                except Exception as e:
+                    from ..exceptions.base import SecurityError
+
+                    if isinstance(e, SecurityError):
+                        raise StrategyError(
+                            f"Version object validation failed: {str(e)}",
+                            error_code="VERSION_OBJECT_VALIDATION_FAILED",
+                            details={
+                                "version": str(version),
+                                "strategy": self.name,
+                                "security_error": e.error_code,
+                            },
+                        ) from e
+                    else:
+                        raise StrategyError(
+                            f"Version object validation failed: {str(e)}",
+                            error_code="VERSION_OBJECT_VALIDATION_FAILED",
+                            details={"version": str(version), "strategy": self.name},
+                        ) from e
+
+            return normalized_version
         except (ValueError, TypeError) as e:
             raise StrategyError(
                 f"Invalid version for {self.name} strategy: {version}",
                 error_code="INVALID_VERSION",
                 details={"version": str(version), "strategy": self.name},
             ) from e
+
+    def _basic_security_check(self, version_str: str) -> None:
+        """
+        Perform basic security checks on version string.
+
+        Args:
+            version_str: Version string to check
+
+        Raises:
+            StrategyError: If security validation fails
+        """
+        # Check for common injection patterns
+        dangerous_patterns = [
+            r'[<>"\']',  # XSS characters
+            r"[\x00-\x1f\x7f-\x9f]",  # Control characters
+            r"(script|javascript|vbscript|onload|onerror)",  # Script injection
+            r"(union|select|insert|update|delete|drop|create|alter)",  # SQL injection
+            r"\.\./",  # Path traversal
+            r"%2e%2e",  # Encoded path traversal
+        ]
+
+        import re
+
+        for pattern in dangerous_patterns:
+            if re.search(pattern, version_str, re.IGNORECASE):
+                raise StrategyError(
+                    "Security validation failed: potentially malicious input detected",
+                    error_code="SECURITY_VALIDATION_FAILED",
+                    details={"input": version_str, "pattern": pattern},
+                )
+
+        # Check length limits
+        if len(version_str) > 100:  # Reasonable limit for version strings
+            raise StrategyError(
+                f"Version string too long: {len(version_str)} characters",
+                error_code="VERSION_TOO_LONG",
+                details={"input": version_str, "length": len(version_str)},
+            )
 
     def get_version_info(self, request: Request) -> dict[str, Any]:
         """
@@ -157,6 +264,10 @@ class VersioningStrategy(ABC):
         """
         self.options.update(options)
 
+        # Update input validator if provided
+        if "input_validator" in options:
+            self.input_validator = options["input_validator"]
+
     def __str__(self) -> str:
         """Return string representation of strategy."""
         return f"{self.__class__.__name__}({self.options})"
@@ -185,6 +296,15 @@ class CompositeVersioningStrategy(VersioningStrategy):
         self.strategies = sorted(strategies, key=lambda s: s.get_priority())
         self.name = "composite"
 
+        # Pass input validator to all child strategies if available
+        if self.input_validator:
+            for strategy in self.strategies:
+                if (
+                    not hasattr(strategy, "input_validator")
+                    or strategy.input_validator is None
+                ):
+                    strategy.input_validator = self.input_validator
+
     def extract_version(self, request: Request) -> Version | None:
         """
         Extract version using the first successful strategy.
@@ -203,8 +323,14 @@ class CompositeVersioningStrategy(VersioningStrategy):
                 version = strategy.extract_version(request)
                 if version is not None:
                     return version
-            except StrategyError:
-                # Continue to next strategy if current one fails
+            except StrategyError as e:
+                # If this is a security-related error, propagate it immediately
+                if e.error_code and "SECURITY" in e.error_code:
+                    raise
+                # If this is an invalid version format error, propagate it immediately
+                if e.error_code and "INVALID_VERSION" in e.error_code:
+                    raise
+                # Continue to next strategy for other errors
                 continue
 
         return None
@@ -243,11 +369,25 @@ class CompositeVersioningStrategy(VersioningStrategy):
             try:
                 version = strategy.extract_version(request)
                 if version is not None:
-                    info = strategy.get_version_info(request)
-                    info["composite_strategy"] = True
-                    info["successful_strategy"] = strategy.name
-                    return info
-            except StrategyError:
+                    # Get the extraction source from the successful strategy
+                    extraction_source = strategy._get_extraction_source(request)
+
+                    return {
+                        "strategy": self.name,
+                        "version": str(version),
+                        "raw_version": version,
+                        "extracted_from": extraction_source,
+                        "composite_strategy": True,
+                        "successful_strategy": strategy.name,
+                    }
+            except StrategyError as e:
+                # If this is a security-related error, propagate it immediately
+                if e.error_code and "SECURITY" in e.error_code:
+                    raise
+                # If this is an invalid version format error, propagate it immediately
+                if e.error_code and "INVALID_VERSION" in e.error_code:
+                    raise
+                # Continue to next strategy for other errors
                 continue
 
         return {

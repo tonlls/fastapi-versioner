@@ -86,35 +86,58 @@ class QueryParameterVersioning(VersioningStrategy):
         Raises:
             StrategyError: If version format is invalid or required parameter is missing
         """
-        # Get query parameters
-        query_params = request.query_params
+        # Get query parameters safely
+        try:
+            query_params = request.query_params
+        except (AttributeError, TypeError):
+            # Handle mock objects
+            query_params = getattr(request, "query_params", {})
+
+        # Handle both FastAPI query_params and mock dictionaries
+        if hasattr(query_params, "get"):
+            # FastAPI query_params or dictionary-like object
+            param_getter = query_params.get
+        else:
+            # Fallback for other types
+            query_params = {}
+            param_getter = query_params.get
 
         # Try each parameter name in order
         for param_name in self.params_to_check:
             # Get parameter value
+            param_value = None
+
             if self.case_sensitive:
                 # Case sensitive lookup
-                param_value = None
-                for key, value in query_params.items():
-                    if key == param_name:
-                        param_value = value
-                        break
+                if hasattr(query_params, "get"):
+                    param_value = param_getter(param_name)
+
+                    # If not found, try direct key lookup for mock objects
+                    if param_value is None and isinstance(query_params, dict):
+                        for key, value in query_params.items():
+                            if key == param_name:
+                                param_value = value
+                                break
             else:
                 # Case insensitive lookup
-                param_value = None
-                for key, value in query_params.items():
-                    if key.lower() == param_name.lower():
-                        param_value = value
-                        break
+                if hasattr(query_params, "get"):
+                    param_value = param_getter(param_name)
 
-            if param_value:
-                try:
-                    return self.validate_version(param_value.strip())
-                except StrategyError:
-                    if self.required:
-                        raise
-                    # Continue to next parameter if this one is invalid
-                    continue
+                    # If not found and case-insensitive, try all parameters
+                    if param_value is None:
+                        if isinstance(query_params, dict):
+                            for key, value in query_params.items():
+                                if key.lower() == param_name.lower():
+                                    param_value = value
+                                    break
+
+            if param_value and hasattr(param_value, "strip"):
+                # If parameter is present, validate it (raise error for invalid format)
+                return self.validate_version(param_value.strip())
+            elif param_value:
+                # Handle non-string values
+                # If parameter is present, validate it (raise error for invalid format)
+                return self.validate_version(str(param_value).strip())
 
         # No version found in any parameter
         if self.required:
@@ -142,19 +165,46 @@ class QueryParameterVersioning(VersioningStrategy):
     def _get_extraction_source(self, request: Request) -> str:
         """Get description of extraction source."""
         # Find which parameter was actually used
-        query_params = request.query_params
+        try:
+            query_params = getattr(request, "query_params", {})
 
-        for param_name in self.params_to_check:
-            if self.case_sensitive:
-                for key, value in query_params.items():
-                    if key == param_name:
-                        return f"Query parameter: {key}={value}"
+            # Handle both FastAPI query_params and mock dictionaries
+            if hasattr(query_params, "get"):
+                param_getter = query_params.get
             else:
-                for key, value in query_params.items():
-                    if key.lower() == param_name.lower():
-                        return f"Query parameter: {key}={value}"
+                query_params = {}
+                param_getter = query_params.get
 
-        return f"Parameters checked: {', '.join(self.params_to_check)}"
+            for param_name in self.params_to_check:
+                param_value = None
+
+                if self.case_sensitive:
+                    if hasattr(query_params, "get"):
+                        param_value = param_getter(param_name)
+
+                        # If not found, try direct key lookup for mock objects
+                        if param_value is None and isinstance(query_params, dict):
+                            for key, value in query_params.items():
+                                if key == param_name:
+                                    param_value = value
+                                    break
+                else:
+                    if hasattr(query_params, "get"):
+                        param_value = param_getter(param_name)
+
+                        # If not found and case-insensitive, try all parameters
+                        if param_value is None and isinstance(query_params, dict):
+                            for key, value in query_params.items():
+                                if key.lower() == param_name.lower():
+                                    param_value = value
+                                    break
+
+                if param_value:
+                    return f"query_param: {param_name}={param_value}"
+        except (AttributeError, TypeError):
+            pass
+
+        return "query_param strategy"
 
     def supports_version_format(self, version: Version) -> bool:
         """

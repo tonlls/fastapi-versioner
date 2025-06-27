@@ -65,3 +65,9 @@ class StrategyError(FastAPIVersionerError):
     """Raised when there's an error with versioning strategies."""
 
     pass
+
+
+class SecurityError(FastAPIVersionerError):
+    """Raised when security validation fails."""
+
+    pass

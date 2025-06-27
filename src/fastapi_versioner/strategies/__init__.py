@@ -82,7 +82,9 @@ def get_strategy(name: str, **options) -> VersioningStrategy:
     """
     if name not in STRATEGY_REGISTRY:
         available = ", ".join(STRATEGY_REGISTRY.keys())
-        raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
+        raise ValueError(
+            f"Unknown versioning strategy '{name}'. Available: {available}"
+        )
 
     strategy_class = STRATEGY_REGISTRY[name]
     return strategy_class(**options)

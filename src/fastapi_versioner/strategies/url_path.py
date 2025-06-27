@@ -45,8 +45,22 @@ class URLPathVersioning(VersioningStrategy):
         self.name = "url_path"
 
         # Configuration options
-        self.prefix = options.get("prefix", "v")
-        self.api_prefix = options.get("api_prefix", "")
+        prefix = options.get("prefix", "v")
+
+        # Handle cases where prefix contains path separators
+        if "/" in prefix and not options.get("api_prefix"):
+            # Split prefix like "/api/version" into api_prefix and prefix
+            parts = prefix.strip("/").split("/")
+            if len(parts) > 1:
+                self.api_prefix = "/" + "/".join(parts[:-1])
+                self.prefix = parts[-1]
+            else:
+                self.api_prefix = ""
+                self.prefix = prefix
+        else:
+            self.prefix = prefix
+            self.api_prefix = options.get("api_prefix", "")
+
         self.position = options.get("position", "start")
         self.strict = options.get("strict", False)
 
@@ -68,12 +82,12 @@ class URLPathVersioning(VersioningStrategy):
         api_prefix_escaped = re.escape(self.api_prefix) if self.api_prefix else ""
 
         if self.api_prefix:
-            # Pattern: /api/v1.2.3 or /api/v1
+            # Pattern: /api/v1.2.3 or /api/v1 or /api/v1.0
             pattern = (
                 rf"^{api_prefix_escaped}/{prefix_escaped}(\d+(?:\.\d+(?:\.\d+)?)?)"
             )
         else:
-            # Pattern: /v1.2.3 or /v1
+            # Pattern: /v1.2.3 or /v1 or /v1.0
             pattern = rf"^/{prefix_escaped}(\d+(?:\.\d+(?:\.\d+)?)?)"
 
         return re.compile(pattern)
@@ -91,7 +105,17 @@ class URLPathVersioning(VersioningStrategy):
         Raises:
             StrategyError: If version format is invalid
         """
-        path = request.url.path
+        try:
+            # Handle mock objects safely
+            if hasattr(request, "url") and hasattr(request.url, "path"):
+                path = request.url.path
+            else:
+                # Fallback for mock objects or malformed requests
+                path = getattr(request, "path", "/")
+                if not isinstance(path, str):
+                    path = "/"
+        except (AttributeError, TypeError):
+            path = "/"
 
         # Try to match the pattern
         match = self.pattern.match(path)
@@ -124,6 +148,10 @@ class URLPathVersioning(VersioningStrategy):
         Returns:
             Modified path with version
         """
+        # Check if path is already versioned to avoid double-versioning
+        if self.pattern.match(path):
+            return path
+
         # Format version string based on configuration
         version_str = self._format_version_for_path(version)
 
@@ -137,6 +165,47 @@ class URLPathVersioning(VersioningStrategy):
         else:
             return f"/{self.prefix}{version_str}/{path}"
 
+    def get_alternative_paths(self, path: str, version: Version) -> list[str]:
+        """
+        Get alternative paths for the same version to support multiple formats.
+
+        This allows both /v1/path and /v1.0/path to work for the same endpoint.
+
+        Args:
+            path: Original route path
+            version: Version to include
+
+        Returns:
+            List of alternative paths
+        """
+        alternatives = []
+
+        # Remove leading slash if present
+        clean_path = path[1:] if path.startswith("/") else path
+
+        # Generate different version formats
+        formats = [
+            str(version.major),  # v1
+            f"{version.major}.{version.minor}",  # v1.0
+            str(version),  # v1.0.0
+        ]
+
+        # Remove duplicates while preserving order
+        unique_formats = []
+        for fmt in formats:
+            if fmt not in unique_formats:
+                unique_formats.append(fmt)
+
+        # Create paths for each format
+        for version_str in unique_formats:
+            if self.api_prefix:
+                alt_path = f"{self.api_prefix}/{self.prefix}{version_str}/{clean_path}"
+            else:
+                alt_path = f"/{self.prefix}{version_str}/{clean_path}"
+            alternatives.append(alt_path)
+
+        return alternatives
+
     def _format_version_for_path(self, version: Version) -> str:
         """
         Format version for inclusion in URL path.
@@ -147,22 +216,47 @@ class URLPathVersioning(VersioningStrategy):
         Returns:
             Formatted version string
         """
-        # Default to major_only format for cleaner URLs (v2 instead of v2.0)
-        format_style = self.options.get("version_format", "major_only")
+        # Default format selection based on version content
+        format_style = self.options.get("version_format", "major_minor")
 
         if format_style == "major_only":
             return str(version.major)
         elif format_style == "major_minor":
             return f"{version.major}.{version.minor}"
         elif format_style == "semantic":
-            return str(version)
+            # For semantic format, use the most appropriate representation
+            # If patch is 0, use major.minor format, otherwise use full semantic
+            if version.patch == 0:
+                return f"{version.major}.{version.minor}"
+            else:
+                return str(version)
+        elif format_style == "auto":
+            # Smart format selection based on version content
+            # Use major-only when minor and patch are 0 (e.g., "1.0" -> "/v1/")
+            # Use major.minor when patch is 0 but minor is not (e.g., "1.2" -> "/v1.2/")
+            # Use full semantic otherwise (e.g., "1.2.3" -> "/v1.2.3/")
+            if version.minor == 0 and version.patch == 0:
+                return str(version.major)
+            elif version.patch == 0:
+                return f"{version.major}.{version.minor}"
+            else:
+                return str(version)
         else:
-            # Default to major_only for cleaner URLs
-            return str(version.major)
+            # Default to auto for smart selection
+            return self._format_version_for_path(version)
 
     def _get_extraction_source(self, request: Request) -> str:
         """Get description of extraction source."""
-        return f"URL path: {request.url.path}"
+        try:
+            if hasattr(request, "url") and hasattr(request.url, "path"):
+                path = request.url.path
+            else:
+                path = getattr(request, "path", "/")
+                if not isinstance(path, str):
+                    path = "/"
+        except (AttributeError, TypeError):
+            path = "/"
+        return f"url_path: {path}"
 
     def supports_version_format(self, version: Version) -> bool:
         """

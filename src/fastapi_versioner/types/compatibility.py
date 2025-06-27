@@ -402,6 +402,21 @@ class VersionNegotiator:
             v for v in avail_vers if self.compatibility_matrix.is_compatible(req_ver, v)
         ]
 
+        # If no explicitly compatible versions found, use default compatibility logic
+        if not compatible:
+            # For empty compatibility matrix, use semantic versioning compatibility
+            compatible = []
+            for v in avail_vers:
+                # Same version is always compatible
+                if req_ver == v:
+                    compatible.append(v)
+                # Same major version is compatible (backward compatibility)
+                elif req_ver.major == v.major:
+                    compatible.append(v)
+                # For closest_compatible strategy, also consider higher major versions
+                elif strategy == "closest_compatible":
+                    compatible.append(v)
+
         if not compatible:
             return None
 

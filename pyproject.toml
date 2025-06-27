@@ -1,25 +1,64 @@
 [project]
 name = "fastapi-versioner"
-version = "0.1.0"
-description = "Production-ready FastAPI versioning library with comprehensive deprecation management and backward compatibility"
+version = "2.0.0"
+description = "The definitive FastAPI versioning library with enterprise-grade features, comprehensive analytics, and unmatched performance"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 dependencies = [
     "fastapi>=0.115.12",
     "pydantic>=2.11.5",
+    "typing-extensions>=4.0.0; python_version<'3.10'",
+]
+
+[project.optional-dependencies]
+cli = [
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "typer>=0.9.0",
+]
+analytics = [
+    "prometheus-client>=0.17.0",
+    "structlog>=23.0.0",
+    "redis>=4.5.0",
+]
+security = [
+    "cryptography>=41.0.0",
+    "pyjwt>=2.8.0",
+    "bcrypt>=4.0.0",
+]
+performance = [
+    "orjson>=3.9.0",
+    "msgpack>=1.0.0",
+    "lz4>=4.3.0",
+]
+enterprise = [
+    "fastapi-versioner[cli,analytics,security,performance]",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.12.0",
+]
+all = [
+    "fastapi-versioner[cli,analytics,security,performance,enterprise]",
 ]
 
 [dependency-groups]
 dev = [
     "bandit>=1.8.3",
+    "httpx>=0.28.1",
     "mypy>=1.15.0",
     "pre-commit>=4.2.0",
+    "psutil>=7.0.0",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",
     "pytest-cov>=6.1.1",
+    "pytest-mock>=3.14.1",
     "ruff>=0.11.11",
     "uvicorn>=0.34.2",
+    "fastapi-versioner[all]",
 ]
+
+[project.scripts]
+fastapi-versioner = "fastapi_versioner.cli.commands:main"
+fv = "fastapi_versioner.cli.commands:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -27,7 +66,7 @@ build-backend = "hatchling.build"
 
 [tool.ruff]
 line-length = 88
-target-version = "py312"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
@@ -39,6 +78,7 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "--cov=src/fastapi_versioner --cov-report=term-missing --cov-report=html"
+asyncio_default_fixture_loop_scope = "function"
 
 [project.urls]
 Homepage = "https://github.com/tonlls/fastapi-versioner"
@@ -53,15 +93,25 @@ email = "tonlls1999@gmail.com"
 [project.license]
 text = "MIT"
 
-keywords = ["fastapi", "versioning", "api", "deprecation", "backward-compatibility"]
+keywords = [
+    "fastapi", "versioning", "api", "deprecation", "backward-compatibility",
+    "enterprise", "analytics", "performance", "security", "monitoring"
+]
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Framework :: FastAPI",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: System :: Monitoring",
+    "Topic :: Security",
+    "Typing :: Typed",
 ]

@@ -5,6 +5,7 @@ This module provides the RouteCollector class for managing versioned routes
 and their organization within the application.
 """
 
+from threading import RLock
 from typing import Any
 
 from ..decorators.version import VersionedRoute
@@ -22,19 +23,20 @@ class RouteCollector:
 
     def __init__(self, config: VersioningConfig):
         """
-        Initialize route collector.
+        Initialize route collector with thread-safe operations.
 
         Args:
             config: Versioning configuration
         """
         self.config = config
         self._routes: dict[str, dict[Version, VersionedRoute]] = {}
+        self._lock = RLock()  # Thread-safe access to routes
 
     def add_route(
         self, path: str, method: str, versioned_route: VersionedRoute
     ) -> None:
         """
-        Add a versioned route.
+        Add a versioned route with thread-safe access.
 
         Args:
             path: Route path
@@ -43,16 +45,17 @@ class RouteCollector:
         """
         route_key = f"{method.upper()}:{path}"
 
-        if route_key not in self._routes:
-            self._routes[route_key] = {}
+        with self._lock:
+            if route_key not in self._routes:
+                self._routes[route_key] = {}
 
-        self._routes[route_key][versioned_route.version] = versioned_route
+            self._routes[route_key][versioned_route.version] = versioned_route
 
     def get_route(
         self, path: str, method: str, version: VersionLike
     ) -> VersionedRoute | None:
         """
-        Get a specific versioned route.
+        Get a specific versioned route with thread-safe access.
 
         Args:
             path: Route path
@@ -65,11 +68,12 @@ class RouteCollector:
         route_key = f"{method.upper()}:{path}"
         version_obj = normalize_version(version)
 
-        return self._routes.get(route_key, {}).get(version_obj)
+        with self._lock:
+            return self._routes.get(route_key, {}).get(version_obj)
 
     def get_versions_for_route(self, path: str, method: str) -> list[Version]:
         """
-        Get all versions for a specific route.
+        Get all versions for a specific route with thread-safe access.
 
         Args:
             path: Route path
@@ -79,7 +83,8 @@ class RouteCollector:
             List of available versions, sorted
         """
         route_key = f"{method.upper()}:{path}"
-        return sorted(self._routes.get(route_key, {}).keys())
+        with self._lock:
+            return sorted(self._routes.get(route_key, {}).keys())
 
     def get_latest_version_for_route(self, path: str, method: str) -> Version | None:
         """
@@ -97,37 +102,39 @@ class RouteCollector:
 
     def list_endpoints(self) -> list[dict[str, Any]]:
         """
-        List all endpoints with their version information.
+        List all endpoints with their version information with thread-safe access.
 
         Returns:
             List of endpoint information dictionaries
         """
         endpoints = []
 
-        for route_key, versions in self._routes.items():
-            method, path = route_key.split(":", 1)
+        with self._lock:
+            for route_key, versions in self._routes.items():
+                method, path = route_key.split(":", 1)
 
-            endpoint_info: dict[str, Any] = {
-                "path": path,
-                "method": method,
-                "versions": [],
-            }
+                endpoint_info: dict[str, Any] = {
+                    "path": path,
+                    "method": method,
+                    "versions": [],
+                }
 
-            for version in sorted(versions.keys()):
-                route = versions[version]
-                endpoint_info["versions"].append(route.get_route_info())
+                for version in sorted(versions.keys()):
+                    route = versions[version]
+                    endpoint_info["versions"].append(route.get_route_info())
 
-            endpoints.append(endpoint_info)
+                endpoints.append(endpoint_info)
 
         return endpoints
 
     def get_all_routes(self) -> dict[str, dict[Version, VersionedRoute]]:
-        """Get all registered routes."""
-        return self._routes.copy()
+        """Get all registered routes with thread-safe access."""
+        with self._lock:
+            return self._routes.copy()
 
     def get_routes_by_version(self, version: VersionLike) -> list[dict[str, Any]]:
         """
-        Get all routes for a specific version.
+        Get all routes for a specific version with thread-safe access.
 
         Args:
             version: Version to filter by
@@ -138,65 +145,72 @@ class RouteCollector:
         version_obj = normalize_version(version)
         routes = []
 
-        for route_key, versions in self._routes.items():
-            if version_obj in versions:
-                method, path = route_key.split(":", 1)
-                route = versions[version_obj]
+        with self._lock:
+            for route_key, versions in self._routes.items():
+                if version_obj in versions:
+                    method, path = route_key.split(":", 1)
+                    route = versions[version_obj]
 
-                route_info = {"path": path, "method": method, **route.get_route_info()}
-                routes.append(route_info)
+                    route_info = {
+                        "path": path,
+                        "method": method,
+                        **route.get_route_info(),
+                    }
+                    routes.append(route_info)
 
         return routes
 
     def get_deprecated_routes(self) -> list[dict[str, Any]]:
         """
-        Get all deprecated routes.
+        Get all deprecated routes with thread-safe access.
 
         Returns:
             List of deprecated route information
         """
         deprecated_routes = []
 
-        for route_key, versions in self._routes.items():
-            method, path = route_key.split(":", 1)
+        with self._lock:
+            for route_key, versions in self._routes.items():
+                method, path = route_key.split(":", 1)
 
-            for version, route in versions.items():
-                if route.is_deprecated:
-                    route_info = {
-                        "path": path,
-                        "method": method,
-                        **route.get_route_info(),
-                    }
-                    deprecated_routes.append(route_info)
+                for version, route in versions.items():
+                    if route.is_deprecated:
+                        route_info = {
+                            "path": path,
+                            "method": method,
+                            **route.get_route_info(),
+                        }
+                        deprecated_routes.append(route_info)
 
         return deprecated_routes
 
     def get_sunset_routes(self) -> list[dict[str, Any]]:
         """
-        Get all sunset routes.
+        Get all sunset routes with thread-safe access.
 
         Returns:
             List of sunset route information
         """
         sunset_routes = []
 
-        for route_key, versions in self._routes.items():
-            method, path = route_key.split(":", 1)
+        with self._lock:
+            for route_key, versions in self._routes.items():
+                method, path = route_key.split(":", 1)
 
-            for version, route in versions.items():
-                if route.is_sunset:
-                    route_info = {
-                        "path": path,
-                        "method": method,
-                        **route.get_route_info(),
-                    }
-                    sunset_routes.append(route_info)
+                for version, route in versions.items():
+                    if route.is_sunset:
+                        route_info = {
+                            "path": path,
+                            "method": method,
+                            **route.get_route_info(),
+                        }
+                        sunset_routes.append(route_info)
 
         return sunset_routes
 
     def remove_route(self, path: str, method: str, version: VersionLike) -> bool:
         """
-        Remove a specific versioned route.
+        Remove a specific versioned route with thread-safe access.
 
         Args:
             path: Route path
@@ -209,20 +223,21 @@ class RouteCollector:
         route_key = f"{method.upper()}:{path}"
         version_obj = normalize_version(version)
 
-        if route_key in self._routes and version_obj in self._routes[route_key]:
-            del self._routes[route_key][version_obj]
+        with self._lock:
+            if route_key in self._routes and version_obj in self._routes[route_key]:
+                del self._routes[route_key][version_obj]
 
-            # Clean up empty route entries
-            if not self._routes[route_key]:
-                del self._routes[route_key]
+                # Clean up empty route entries
+                if not self._routes[route_key]:
+                    del self._routes[route_key]
 
-            return True
+                return True
 
-        return False
+            return False
 
     def get_route_statistics(self) -> dict[str, Any]:
         """
-        Get statistics about collected routes.
+        Get statistics about collected routes with thread-safe access.
 
         Returns:
             Dictionary with route statistics
@@ -232,23 +247,24 @@ class RouteCollector:
         sunset_count = 0
         version_counts: dict[str, int] = {}
 
-        for versions in self._routes.values():
-            for version, route in versions.items():
-                total_routes += 1
+        with self._lock:
+            for versions in self._routes.values():
+                for version, route in versions.items():
+                    total_routes += 1
 
-                if route.is_deprecated:
-                    deprecated_count += 1
+                    if route.is_deprecated:
+                        deprecated_count += 1
 
-                if route.is_sunset:
-                    sunset_count += 1
+                    if route.is_sunset:
+                        sunset_count += 1
 
-                version_str = str(version)
-                version_counts[version_str] = version_counts.get(version_str, 0) + 1
+                    version_str = str(version)
+                    version_counts[version_str] = version_counts.get(version_str, 0) + 1
 
-        return {
-            "total_routes": total_routes,
-            "unique_endpoints": len(self._routes),
-            "deprecated_routes": deprecated_count,
-            "sunset_routes": sunset_count,
-            "version_distribution": version_counts,
-        }
+            return {
+                "total_routes": total_routes,
+                "unique_endpoints": len(self._routes),
+                "deprecated_routes": deprecated_count,
+                "sunset_routes": sunset_count,
+                "version_distribution": version_counts,
+            }
