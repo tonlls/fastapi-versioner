@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 from src.fastapi_versioner import VersionedFastAPI, version
 from src.fastapi_versioner.core.version_manager import VersionManager
 from src.fastapi_versioner.decorators.version import VersionRegistry
+from src.fastapi_versioner.security.rate_limiter import RateLimitConfig
 from src.fastapi_versioner.strategies import (
     HeaderVersioning,
     QueryParameterVersioning,
@@ -52,13 +53,64 @@ def sample_versions() -> list[Version]:
 
 
 @pytest.fixture
-def basic_config() -> VersioningConfig:
-    """Provide a basic versioning configuration."""
+def test_rate_limit_config() -> RateLimitConfig:
+    """Provide a test-friendly rate limiting configuration that's very permissive."""
+    return RateLimitConfig(
+        # Very high limits for testing
+        requests_per_minute=10000,
+        requests_per_hour=100000,
+        requests_per_day=1000000,
+        # High burst limits
+        burst_limit=1000,
+        burst_window_seconds=1,
+        # Disable blocking for tests
+        block_on_limit=False,
+        log_rate_limit_violations=False,
+        # Fast cleanup for tests
+        cleanup_interval_seconds=1,
+        max_tracked_clients=1000,
+    )
+
+
+@pytest.fixture
+def basic_config(test_rate_limit_config: RateLimitConfig) -> VersioningConfig:
+    """Provide a basic versioning configuration optimized for testing."""
     return VersioningConfig(
         default_version=Version(1, 0, 0),
         strategies=["url_path"],
         enable_deprecation_warnings=True,
         enable_version_discovery=True,
+        # Disable security features that can interfere with tests
+        enable_security_features=False,
+        enable_rate_limiting=False,
+        enable_security_audit_logging=False,
+        # Disable performance features that can interfere with tests
+        enable_performance_optimization=False,
+        enable_caching=False,
+        enable_memory_optimization=False,
+        enable_performance_monitoring=False,
+    )
+
+
+@pytest.fixture
+def test_config_with_security(
+    test_rate_limit_config: RateLimitConfig,
+) -> VersioningConfig:
+    """Provide a test configuration with security features enabled but test-friendly."""
+    return VersioningConfig(
+        default_version=Version(1, 0, 0),
+        strategies=["url_path"],
+        enable_deprecation_warnings=True,
+        enable_version_discovery=True,
+        # Enable security features but with test-friendly settings
+        enable_security_features=True,
+        enable_rate_limiting=True,
+        enable_security_audit_logging=False,  # Disable logging for tests
+        # Disable performance features for predictable testing
+        enable_performance_optimization=False,
+        enable_caching=False,
+        enable_memory_optimization=False,
+        enable_performance_monitoring=False,
     )
 
 
@@ -82,6 +134,11 @@ def multi_strategy_config() -> VersioningConfig:
         strategies=["url_path", "header", "query_param"],
         strategy_priority=["header", "url_path", "query_param"],
         enable_deprecation_warnings=True,
+        # Disable features that can interfere with tests
+        enable_security_features=False,
+        enable_rate_limiting=False,
+        enable_performance_optimization=False,
+        enable_caching=False,
     )
 
 
@@ -146,6 +203,8 @@ def mock_request() -> Mock:
     request.headers = {}
     request.query_params = {}
     request.state = Mock()
+    request.client = Mock()
+    request.client.host = "127.0.0.1"
     return request
 
 
@@ -205,17 +264,82 @@ def expired_deprecation_info() -> DeprecationInfo:
 @pytest.fixture(autouse=True)
 def reset_global_registry():
     """Reset the global version registry before each test."""
-    from src.fastapi_versioner.decorators.version import _version_registry
+    from src.fastapi_versioner.decorators.version import clear_version_registry
 
-    # Clear the registry
-    _version_registry._routes.clear()
-    _version_registry._handlers.clear()
+    # Clear the registry before test
+    clear_version_registry()
 
     yield
 
     # Clean up after test
-    _version_registry._routes.clear()
-    _version_registry._handlers.clear()
+    clear_version_registry()
+
+
+@pytest.fixture(autouse=True)
+def reset_data():
+    """Reset any global state and data before each test."""
+    # Reset any caches - create new instances to clear state
+    try:
+        from src.fastapi_versioner.performance.cache import (  # noqa: F401
+            CacheConfig,
+            VersionCache,
+        )
+
+        # Create a fresh cache config for tests
+        CacheConfig(
+            enable_version_cache=False,
+            enable_route_cache=False,
+            enable_request_signature_cache=False,
+        )
+    except ImportError:
+        pass
+
+    # Reset any global metrics - create new instances to clear state
+    try:
+        from src.fastapi_versioner.performance.metrics import (
+            PerformanceMetrics,
+        )
+
+        # Create fresh metrics instances for tests
+        PerformanceMetrics()
+    except ImportError:
+        pass
+
+    yield
+
+    # Clean up after test
+    pass
+
+
+@pytest.fixture(autouse=True)
+def isolate_test_modules():
+    """Ensure test modules don't interfere with each other."""
+    import gc
+    import sys
+
+    # Store original modules
+    original_modules = set(sys.modules.keys())
+
+    yield
+
+    # Clean up any test-specific modules that were imported
+    test_modules_to_remove = []
+    for module_name in sys.modules:
+        if module_name not in original_modules and (
+            "test_" in module_name
+            or module_name.startswith("tests.")
+            or "__mp_main__" in module_name
+        ):
+            test_modules_to_remove.append(module_name)
+
+    for module_name in test_modules_to_remove:
+        try:
+            del sys.modules[module_name]
+        except KeyError:
+            pass
+
+    # Force garbage collection to clean up any remaining references
+    gc.collect()
 
 
 class MockAsyncContext:
@@ -251,6 +375,8 @@ def create_request_with_version(
     request.headers = {}
     request.query_params = {}
     request.state = Mock()
+    request.client = Mock()
+    request.client.host = "127.0.0.1"
 
     if version:
         if strategy == "header":

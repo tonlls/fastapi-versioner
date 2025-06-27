@@ -53,6 +53,18 @@ def main():
     # Test commands to run
     test_commands = [
         {
+            "command": [
+                "python",
+                "-m",
+                "pytest",
+                "examples/test_examples.py",
+                "-v",
+                "--tb=short",
+            ],
+            "description": "Example Smoke Tests",
+            "required": True,
+        },
+        {
             "command": ["python", "-m", "pytest", "tests/unit/", "-v", "--tb=short"],
             "description": "Unit Tests",
             "required": True,
